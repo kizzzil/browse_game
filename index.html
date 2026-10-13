@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дело №0913</title>
+  <meta name="description" content="Браузерный триллер-квест: улики ищутся в настоящем интернете.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand"><span class="rec"></span> <span id="case-title">ДЕЛО</span></div>
+    <div class="agent" id="agent-label"></div>
+    <nav class="top-actions">
+      <button class="ghost" id="btn-evidence">Улики <span class="count" id="evidence-count">0</span></button>
+      <button class="ghost" id="btn-reset" title="Начать заново">⟲</button>
+    </nav>
+  </header>
+
+  <main id="app" class="app"></main>
+
+  <aside id="evidence-panel" class="panel" aria-hidden="true">
+    <div class="panel-head">
+      <h2>Доска улик</h2>
+      <button class="ghost" id="btn-close-evidence">✕</button>
+    </div>
+    <div id="evidence-list" class="evidence-list"></div>
+  </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/answers.js"></script>
+  <script src="js/case.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

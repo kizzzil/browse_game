@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Генератор чека-реквизита</title>
+  <style>
+    body { margin:0; font:15px/1.5 system-ui, sans-serif; background:#eee; color:#222; display:flex; flex-wrap:wrap; gap:24px; padding:24px; }
+    form { background:#fff; padding:20px; display:grid; gap:10px; width:340px; }
+    label { display:grid; gap:4px; font-size:13px; }
+    input, textarea { font:inherit; padding:6px 8px; }
+    .note { font-size:12px; color:#666; }
+    .receipt { width:58mm; background:#fff; padding:6mm 4mm; font:12px/1.35 "Courier New", monospace; align-self:flex-start; }
+    .receipt .c { text-align:center; } .receipt .t { font-weight:700; font-size:15px; }
+    .receipt .row { display:flex; justify-content:space-between; gap:6px; }
+    .receipt hr { border:0; border-top:1px dashed #333; }
+    @media print { body { background:#fff; padding:0; } form { display:none; } }
+  </style>
+</head>
+<body>
+  <form id="f">
+    <b>Чек-реквизит для фото</b>
+    <p class="note">Заполните поля, распечатайте (Ctrl+P, масштаб 100%) и сфотографируйте на столе для поста персонажа. Не используйте реальные названия заведений без их согласия и реальные номера карт.</p>
+    <label>Заведение <input name="title" value="СЕВЕРНЫЙ ВЕТЕР"></label>
+    <label>Подпись <input name="sub" value="ресторан · Приморская наб., 7"></label>
+    <label>Дата и время <input name="date" value="12.09.2026  22:58"></label>
+    <label>Стол / гости <input name="table" value="Стол 12   Гостей: 2"></label>
+    <label>Позиции (название; цена — по строке) <textarea name="items" rows="4">Тирамису; 540
+Капучино ×2; 560
+Вино бел. 150 ×2; 1 300</textarea></label>
+    <label>Итого <input name="total" value="2 400"></label>
+    <label>Последние 4 цифры карты <input name="card" value="4417" maxlength="4"></label>
+    <button type="button" onclick="print()">Печать</button>
+  </form>
+  <div class="receipt" id="r"></div>
+  <script>
+    const f = document.getElementById("f"), r = document.getElementById("r");
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    function draw() {
+      const v = Object.fromEntries(new FormData(f));
+      const items = v.items.split("\n").filter(Boolean).map((l) => l.split(";"));
+      r.innerHTML = `<div class="c t">${esc(v.title)}</div><div class="c">${esc(v.sub)}</div><hr>
+        <div>${esc(v.date)}</div><div>${esc(v.table)}</div><hr>
+        ${items.map(([a, b = ""]) => `<div class="row"><span>${esc(a.trim())}</span><span>${esc(b.trim())}</span></div>`).join("")}<hr>
+        <div class="row"><b>ИТОГО</b><b>${esc(v.total)}</b></div>
+        <div>ОПЛАТА: КАРТА •••• ${esc(v.card)}</div><br><div class="c">СПАСИБО!</div>`;
+    }
+    f.addEventListener("input", draw); draw();
+  </script>
+</body>
+</html>
