@@ -37,7 +37,10 @@
     return { id, kind: "quest", title: `Эпизод ${q.number} «${q.title}»`, price: q.price, includes: [id] };
   }
 
-  function keys() { return Store.get("keys", {}) || {}; }
+  function keys() {
+    const k = Store.get("keys", {});
+    return k && typeof k === "object" && !Array.isArray(k) ? k : {};
+  }
   function setKey(id, k) { const all = keys(); all[id] = k; Store.set("keys", all); emit([id]); }
   function forget(id) { const all = keys(); delete all[id]; Store.set("keys", all); emit([id]); }
   function emit(ids) { listeners.forEach((fn) => { try { fn(ids); } catch (e) { console.warn(e); } }); }
@@ -67,21 +70,19 @@
   async function redeemCode(code) {
     const n = Vault.normalizeCode(code);
     if (!n) return [];
-    const kid = await Vault.kidOf(n);
-    const found = [];
     const man = await manifest();
-    for (const q of paidQuests()) {
-      if (man && man.quests && !man.quests[q.id]) continue; // ещё не опубликован
+    const list = paidQuests().filter((q) => !(man && man.quests && !man.quests[q.id])); // только опубликованные
+    // Один PBKDF2 на эпизод: kid выводится из ключа, а не из кода, поэтому пробуем каждый эпизод.
+    const got = await Promise.all(list.map(async (q) => {
       let enc;
-      try { enc = await fetchEnc(q.id); } catch (e) { continue; } // эпизод ещё не опубликован
-      if (!enc.keys || !enc.keys.some((k) => k.kid === kid)) continue;
-      try {
-        const K = await Vault.unlockWithCode(enc, n);
-        const all = keys(); all[q.id] = K; Store.set("keys", all);
-        found.push(q.id);
-      } catch (e) { /* не подошёл к этому эпизоду */ }
-    }
-    if (found.length) emit(found);
+      try { enc = await fetchEnc(q.id); } catch (e) { return null; } // эпизод ещё не опубликован
+      try { return [q.id, await Vault.unlockWithCode(enc, n)]; }
+      catch (e) { return null; } // не подошёл к этому эпизоду
+    }));
+    const found = [];
+    const all = keys();
+    for (const g of got) if (g) { all[g[0]] = g[1]; found.push(g[0]); }
+    if (found.length) { Store.set("keys", all); emit(found); }
     return found;
   }
 
@@ -99,11 +100,13 @@
     async checkout(it) {
       const cfg = Access.config;
       if (!cfg.checkoutEndpoint) throw new Error("Не задан checkoutEndpoint");
-      const returnUrl = location.href.split("#")[0].split("?")[0];
+      // Точка возврата: адрес страницы без query и хэша + хэш отдельно (play.html#ep2 → вернёмся в эп.2).
+      const returnUrl = location.origin + location.pathname;
+      const returnHash = location.hash || "";
       const res = await fetch(cfg.checkoutEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item: it.id, returnUrl, provider: cfg.provider })
+        body: JSON.stringify({ item: it.id, returnUrl, returnHash, provider: cfg.provider })
       });
       if (!res.ok) throw new Error(`Сервер оплаты ответил ${res.status}`);
       const data = await res.json(); // { orderId, confirmationUrl }
@@ -112,11 +115,13 @@
       return { status: "redirect", orderId: data.orderId };
     },
     // GET keyEndpoint?order=… → { status:"succeeded"|"pending"|"canceled", keys?:{ep2:K}, codes?:[…] }
-    async claim(orderId) {
+    async claim(orderId, onStatus) {
       const cfg = Access.config;
       if (!cfg.keyEndpoint || !orderId) return [];
       for (let attempt = 0; attempt < 6; attempt++) {
+        if (onStatus) onStatus(attempt ? "Проверяем оплату… платёж ещё обрабатывается" : "Проверяем оплату…");
         const res = await fetch(`${cfg.keyEndpoint}${cfg.keyEndpoint.includes("?") ? "&" : "?"}order=${encodeURIComponent(orderId)}`, { cache: "no-store" });
+        if (res.status === 404) return []; // такого заказа нет — ждать нечего
         if (res.ok) {
           const data = await res.json();
           if (data.status === "succeeded") {
@@ -147,13 +152,14 @@
     openModal(itemId);
   }
 
-  async function handleReturn() {
+  // opts.onStatus(text) — показать игроку, что идёт (например, «Проверяем оплату…»).
+  async function handleReturn(opts = {}) {
     const params = new URLSearchParams(location.search);
     const orderId = params.get("order");
     const code = params.get("code");
     let unlocked = [];
     if (orderId && provider().online) {
-      try { unlocked = await provider().claim(orderId); }
+      try { unlocked = await provider().claim(orderId, opts.onStatus); }
       finally { Store.remove("pendingOrder"); }
     }
     if (code) unlocked = unlocked.concat(await redeemCode(code));

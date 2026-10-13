@@ -37,6 +37,10 @@ cd dist && python3 -m http.server 8765
 # http://localhost:8765/play.html#ep2 — эпизод (код MAYAK-DEMO-2026 открывает платные)
 ```
 
+Перед публикацией прогоните сквозной автотест: `node tools/playtest.js` (должен закончиться
+«ОК»). Если добавили главу или поменяли ответ — обновите сценарий в `tools/playtest.js`
+и прохождение в `docs/walkthrough/ep<N>.md`.
+
 Чтобы посмотреть «Ленту» глазами игрока поздних эпизодов, в консоли браузера на сайте:
 `localStorage.setItem("mayak:worldEpisode", "4")`.
 

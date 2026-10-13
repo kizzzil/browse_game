@@ -16,14 +16,28 @@ node tools/build.js                 # content/ → quests/ (хэши, шифро
 cd dist && python3 -m http.server 8765
 # http://localhost:8765/                — витрина сезона
 # http://localhost:8765/play.html#ep1   — эпизод 1
+
+node tools/playtest.js              # сборка + сквозной автотест всех эпизодов в Chromium (код выхода 0/1)
 ```
+
+`tools/playtest.js` сам поднимает сервер из `dist/` на свободном порту, на ширине 390px проходит
+эп.1–4 от начала до победы (ловушки отклоняются, неверный финал проигрывает), проверяет, что
+ответ каждой главы действительно находится в материалах мира (страницы, ники «Ленты», EXIF,
+декодирование Морзе, спектрограмма), видимость «Ленты» по `mayak:worldEpisode`, витрину и коды,
+а также обходит все страницы `world/`: ошибки консоли, битые ссылки, горизонтальный скролл,
+подвал о вымышленности. Флаги: `--no-build`, `--headed`. Нужен Playwright с Chromium
+(глобальный `npm root -g` подходит).
 
 Тестовый код доступа к платным эпизодам: `MAYAK-DEMO-2026` (можно и ссылкой:
 `index.html?code=MAYAK-DEMO-2026`). Перед реальными продажами его нужно убрать — см.
 [docs/PAYMENTS.md](docs/PAYMENTS.md).
 
-Публикуется **только содержимое `dist/`** (на GitHub Pages — из ветки/артефакта со сборкой).
-`dist/` в `.gitignore`.
+Публикуется **только содержимое `dist/`**. Workflow `.github/workflows/pages.yml` при каждом push
+в `master`/`main` запускает `node tools/build.js --publish-only` и кладёт `dist/` в ветку
+`gh-pages`, которую раздаёт GitHub Pages (Settings → Pages → Deploy from branch → `gh-pages`).
+Корень репозитория наружу не публикуется. В CI ключей нет (`content/*/key.json` в `.gitignore`), поэтому платные
+эпизоды перед коммитом собираются локально (`node tools/build.js`), а CI только копирует
+закоммиченные `quests/`. `dist/` в `.gitignore`.
 
 ## Структура
 

@@ -128,6 +128,8 @@ h3 { font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: va
 /* Форма ответа */
 .answer { margin-top: 32px; padding: 22px; border: 1px solid var(--line); background: rgba(18,20,24,.85); }
 .answer label { display: block; margin-bottom: 12px; color: #f1ede4; }
+.suspects-set { border: 0; padding: 0; margin: 0; min-width: 0; }
+.suspects-set legend { display: block; padding: 0; margin-bottom: 12px; color: #f1ede4; }
 .answer-row { display: flex; gap: 10px; }
 .answer input, .answer select {
   flex: 1; min-width: 0;
@@ -180,7 +182,8 @@ h3 { font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: va
   transform: translateX(100%); transition: transform .35s ease;
   overflow-y: auto;
 }
-.panel.open { transform: none; }
+.panel.open { transform: none; visibility: visible; transition: transform .35s ease, visibility 0s; }
+.panel:not(.open) { visibility: hidden; transition: transform .35s ease, visibility 0s linear .35s; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .panel-head h2 { margin: 0; }
 .evidence-list .cards { grid-template-columns: 1fr; }

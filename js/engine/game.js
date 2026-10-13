@@ -9,7 +9,16 @@
   const CAT = window.CATALOG;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const questId = (decodeURIComponent(location.hash.slice(1)) || CAT.quests[0].id).trim();
+  let rawHash = location.hash.slice(1);
+  try { rawHash = decodeURIComponent(rawHash); } catch (e) { /* битое %-кодирование → «Дело не найдено» */ }
+  // Возврат с оплаты без хэша (play.html?order=…): открываем купленный эпизод, а не первый.
+  function returnTarget() {
+    if (!/[?&]order=/.test(location.search)) return null;
+    const pending = Store.get("pendingOrder", null);
+    const it = pending && pending.item && Access.item(pending.item);
+    return it && it.includes && it.includes[0] || null;
+  }
+  const questId = (rawHash || returnTarget() || CAT.quests[0].id).trim();
   const meta = CAT.quests.find((q) => q.id === questId) || null;
   addEventListener("hashchange", () => location.reload());
 
@@ -94,7 +103,18 @@
       s = Store.legacy("quest:mayak-01");
       if (s && s.agent && !Store.get("agent", "")) Store.set("agent", s.agent);
     }
+    // Прогресс из localStorage мог быть испорчен вручную или старой версией — нормализуем поля.
+    if (!s || typeof s !== "object" || Array.isArray(s)) s = null;
     const st = Object.assign(fresh(), s || {});
+    const isObj = (x) => x && typeof x === "object" && !Array.isArray(x);
+    const max = Q ? Q.chapters.length : 0;
+    st.chapter = Number.isInteger(st.chapter) ? Math.min(Math.max(st.chapter, -1), max) : -1;
+    if (!isObj(st.solved)) st.solved = {};
+    if (!isObj(st.hints)) st.hints = {};
+    if (!Array.isArray(st.evidence)) st.evidence = [];
+    st.evidence = st.evidence.filter((e) => isObj(e) && e.id);
+    if (st.ending != null && !(isObj(st.ending) && typeof st.ending.win === "boolean")) st.ending = null;
+    if (typeof st.agent !== "string") st.agent = "";
     if (!st.agent) st.agent = Store.get("agent", "") || "";
     return st;
   }
@@ -211,7 +231,7 @@
     if (!all.length) return "";
     const list = all.slice(0, used).map((h) => `<li>${esc(h)}</li>`).join("");
     const more = used < all.length ? `<button type="button" id="hint-btn">Нужна подсказка (${used}/${all.length})</button>` : "";
-    return `<div class="hints">${more}${list ? `<ol>${list}</ol>` : ""}</div>`;
+    return `<div class="hints">${more}${list ? `<ol aria-live="polite">${list}</ol>` : ""}</div>`;
   }
 
   function addEvidence(list) {
@@ -239,6 +259,12 @@
         save();
         $("#hints").innerHTML = hintsHtml(ch);
         bindHint();
+        // Кнопка пересоздана — возвращаем фокус: на новую кнопку или на только что открытую подсказку.
+        const items = $("#hints").querySelectorAll("li");
+        const last = items[items.length - 1];
+        if (last) last.setAttribute("tabindex", "-1");
+        const nb = $("#hint-btn");
+        if (nb) nb.focus(); else if (last) last.focus();
       });
     };
     bindHint();
@@ -308,9 +334,11 @@
         <h3>Ваши улики</h3>
         ${cardsHtml(state.evidence)}
         <form class="answer" id="accuse-form">
-          <label>${esc(f.prompt)}</label>
-          ${multi ? `<p class="note multi-note">Отметьте все подходящие варианты. Лишнее так же опасно, как недостающее. <span id="pick-count">Выбрано: 0</span></p>` : ""}
-          <div class="suspects ${multi ? "multi" : ""}">${options}</div>
+          <fieldset class="suspects-set">
+            <legend>${esc(f.prompt)}</legend>
+            ${multi ? `<p class="note multi-note">Отметьте все подходящие варианты. Лишнее так же опасно, как недостающее. <span id="pick-count">Выбрано: 0</span></p>` : ""}
+            <div class="suspects ${multi ? "multi" : ""}">${options}</div>
+          </fieldset>
           <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
           <button class="btn" type="submit">${esc(idleText)}</button>
         </form>
@@ -518,9 +546,14 @@
   // ---------- панель улик и сброс ----------
   const panel = $("#evidence-panel");
   function togglePanel(open) {
+    const was = panel.classList.contains("open");
     panel.classList.toggle("open", open);
     panel.setAttribute("aria-hidden", String(!open));
+    panel.inert = !open; // закрытая панель не попадает в порядок Tab
+    if (open && !was) $("#btn-close-evidence").focus();
+    else if (!open && was) $("#btn-evidence").focus();
   }
+  panel.inert = true;
   $("#btn-evidence").addEventListener("click", () => togglePanel(!panel.classList.contains("open")));
   $("#btn-close-evidence").addEventListener("click", () => togglePanel(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") togglePanel(false); });
@@ -550,5 +583,7 @@
   });
 
   state = fresh();
-  Access.handleReturn().catch((e) => toast(e.message)).finally(boot);
+  const loadingLead = $("#app .loading .lead");
+  Access.handleReturn({ onStatus: (t) => { if (loadingLead) loadingLead.textContent = t; } })
+    .catch((e) => toast(e.message)).finally(boot);
 })();

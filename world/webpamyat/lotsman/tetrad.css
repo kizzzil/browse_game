@@ -1,0 +1,32 @@
+/* Платформа блогов «Тетрадь» (снимок в «Веб-Памяти»): тетрадный лист, чернила, поля. */
+.td { background:#eef0e9; color:#22262b; font:17px/1.65 "DejaVu Serif", Georgia, serif; }
+.td-top { background:#fff; border-bottom:1px solid #cfd6d0; }
+.td-top .in { max-width:760px; margin:0 auto; padding:8px 16px; font:12px "DejaVu Sans", sans-serif; color:#7b857f; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.td-top b { color:#3d6b8f; letter-spacing:.08em; }
+.td-sheet { max-width:760px; margin:22px auto; background:#fffef8; border:1px solid #dcdcd0; box-shadow:0 2px 14px rgba(40,50,45,.08);
+  background-image:linear-gradient(90deg, transparent 54px, #f3b6b6 54px, #f3b6b6 56px, transparent 56px), repeating-linear-gradient(180deg, transparent 0 27px, #dde8f0 27px 28px); }
+.td-head { padding:30px 22px 10px 72px; }
+.td-head h1 { margin:0; font:700 clamp(26px,6vw,36px)/1.15 "DejaVu Serif", Georgia, serif; color:#1f3b57; }
+.td-head p { margin:6px 0 0; color:#5f6b72; font-style:italic; }
+.td-nav { padding:6px 22px 6px 72px; font:14px "DejaVu Sans", sans-serif; }
+.td-nav a { color:#2f6690; margin-right:16px; text-decoration:none; border-bottom:1px solid #9fc2dc; }
+.td-nav a.on { color:#1f3b57; font-weight:700; border-bottom-color:#1f3b57; }
+.td-body { padding:8px 22px 26px 72px; }
+.post { margin:18px 0 30px; }
+.post .date { font:12px "DejaVu Sans Mono", monospace; color:#8a7f6a; letter-spacing:.05em; }
+.post h2 { margin:2px 0 6px; font:700 23px/1.25 "DejaVu Serif", Georgia, serif; color:#1f3b57; }
+.post p { margin:0 0 10px; }
+.audio { margin:12px 0; padding:10px 12px; background:#f2f6f9; border:1px dashed #9fb7c9; border-radius:6px; font:14px "DejaVu Sans", sans-serif; }
+.audio audio { width:100%; margin:6px 0; }
+.audio a { color:#2f6690; }
+.cm { margin:10px 0 0; padding:8px 10px; border-left:3px solid #c6d4de; font:14px/1.5 "DejaVu Sans", sans-serif; background:rgba(255,255,255,.6); }
+.cm b { color:#2f6690; }
+.cm small { color:#8a8f92; }
+.td-note { font:13px "DejaVu Sans", sans-serif; color:#8a8f92; font-style:italic; }
+.td-gone { text-align:center; padding:60px 20px; font:16px/1.6 "DejaVu Sans", sans-serif; color:#555; }
+.td-gone h1 { font:700 26px "DejaVu Serif", Georgia, serif; color:#1f3b57; }
+.td-foot { max-width:760px; margin:0 auto 26px; padding:0 16px; text-align:center; font:12px "DejaVu Sans", sans-serif; color:#7b857f; }
+@media (max-width:520px) {
+  .td-sheet { margin:12px 8px; background-image:linear-gradient(90deg, transparent 22px, #f3b6b6 22px, #f3b6b6 24px, transparent 24px), repeating-linear-gradient(180deg, transparent 0 27px, #dde8f0 27px 28px); }
+  .td-head, .td-nav, .td-body { padding-left:36px; padding-right:14px; }
+}

@@ -2,16 +2,20 @@
  * Шифрование платного контента: AES-GCM 256 + PBKDF2-SHA256.
  * Один файл для браузера (window.Vault, crypto.subtle) и node (require → webcrypto).
  *
- * Формат зашифрованного квеста (quests/<id>/quest.enc.json):
- *   { v:1, alg:"AES-GCM", iv:b64, ct:b64,
- *     keys:[ { kid, salt:b64, iter:200000, iv:b64, wrapped:b64 } ] }
+ * Формат зашифрованного квеста (quests/<id>/quest.enc.json), v2:
+ *   { v:2, alg:"AES-GCM", iv:b64, ct:b64,
+ *     kdf:{ salt:b64, iter:200000 },
+ *     keys:[ { kid, iv:b64, wrapped:b64 } ] }
  * ct — JSON квеста, зашифрованный ключом контента K (32 байта).
- * keys[i].wrapped — K, зашифрованный ключом из PBKDF2(normalizeCode(код), salt, iter).
- * kid — первые 8 hex sha256(normalizeCode(код)); по нему ищется нужная обёртка.
+ * Для кода доступа один раз считается M = PBKDF2-SHA256(normalizeCode(код), kdf.salt, kdf.iter) (256 бит);
+ * из M через HMAC-SHA256 выводятся ключ обёртки (HMAC(M,"wrap")) и kid (первые 8 hex HMAC(M,"kid")).
+ * keys[i].wrapped — K, зашифрованный ключом обёртки. kid нельзя проверить без PBKDF2, поэтому он не
+ * ускоряет перебор кодов (в v1 kid был sha256(код) без соли — так больше не делаем).
  *
  * API:
- *   Vault.normalizeCode(code)                 → "MAYAKDEMO2026"
+ *   Vault.normalizeCode(code)                 → "ABCDEFGH"
  *   Vault.unlockWithCode(enc, code)           → Promise<K b64>   (ошибка, если код не подходит)
+ *   Vault.kidsFor(enc, codes)                 → Promise<[kid]>   (для сборки: какие коды уже обёрнуты)
  *   Vault.decrypt(enc, Kb64)                  → Promise<object>  (ошибка, если ключ не подходит)
  *   Vault.generateKey()                       → K b64 (для сборки)
  *   Vault.encrypt(obj, Kb64, codes, opts)     → Promise<enc>     (для сборки)
@@ -53,16 +57,17 @@
     return String(code == null ? "" : code).trim().toUpperCase().replace(/[\s\-‐-—]+/g, "");
   }
 
-  async function kidOf(code) {
-    const buf = await subtle().digest("SHA-256", enc.encode(normalizeCode(code)));
-    return Array.from(new Uint8Array(buf).slice(0, 4), (b) => b.toString(16).padStart(2, "0")).join("");
-  }
+  const hex = (buf, n) => Array.from(new Uint8Array(buf).slice(0, n), (b) => b.toString(16).padStart(2, "0")).join("");
 
-  async function deriveWrapKey(code, salt, iter) {
-    const base = await subtle().importKey("raw", enc.encode(normalizeCode(code)), "PBKDF2", false, ["deriveKey"]);
-    return subtle().deriveKey(
-      { name: "PBKDF2", hash: "SHA-256", salt, iterations: iter },
-      base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  // Один PBKDF2 на код и файл → { kid, wrapKey }.
+  async function deriveCodeKeys(code, salt, iter) {
+    const base = await subtle().importKey("raw", enc.encode(normalizeCode(code)), "PBKDF2", false, ["deriveBits"]);
+    const master = await subtle().deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iter }, base, 256);
+    const mac = await subtle().importKey("raw", master, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const kidRaw = await subtle().sign("HMAC", mac, enc.encode("kid"));
+    const wrapRaw = await subtle().sign("HMAC", mac, enc.encode("wrap"));
+    const wrapKey = await subtle().importKey("raw", wrapRaw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    return { kid: hex(kidRaw, 4), wrapKey };
   }
 
   function importContentKey(Kb64) {
@@ -73,16 +78,10 @@
     return toB64(randomBytes(32));
   }
 
-  async function wrap(Kb64, code, iter = ITER) {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
-    const wk = await deriveWrapKey(code, salt, iter);
-    const wrapped = await subtle().encrypt({ name: "AES-GCM", iv }, wk, fromB64(Kb64));
-    return { kid: await kidOf(code), salt: toB64(salt), iter, iv: toB64(iv), wrapped: toB64(wrapped) };
-  }
-
   async function encrypt(obj, Kb64, codes, opts = {}) {
     if (!codes || !codes.length) throw new Error("Нужен хотя бы один код доступа");
+    const iter = opts.iter || ITER;
+    const salt = randomBytes(16);
     const iv = randomBytes(12);
     const key = await importContentKey(Kb64);
     const ct = await subtle().encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify(obj)));
@@ -92,21 +91,36 @@
       const n = normalizeCode(c);
       if (!n || seen.has(n)) continue;
       seen.add(n);
-      keys.push(await wrap(Kb64, n, opts.iter || ITER));
+      const { kid, wrapKey } = await deriveCodeKeys(n, salt, iter);
+      const kiv = randomBytes(12);
+      const wrapped = await subtle().encrypt({ name: "AES-GCM", iv: kiv }, wrapKey, fromB64(Kb64));
+      keys.push({ kid, iv: toB64(kiv), wrapped: toB64(wrapped) });
     }
-    return { v: 1, alg: "AES-GCM", iv: toB64(iv), ct: toB64(ct), keys };
+    // Порядок обёрток не должен выдавать порядок кодов в codes.json.
+    keys.sort((x, y) => (x.kid < y.kid ? -1 : x.kid > y.kid ? 1 : 0));
+    return { v: 2, alg: "AES-GCM", iv: toB64(iv), ct: toB64(ct), kdf: { salt: toB64(salt), iter }, keys };
+  }
+
+  function checkFormat(encJson) {
+    if (!encJson || encJson.v !== 2 || !encJson.kdf || !Array.isArray(encJson.keys)) throw new Error("Повреждённый или устаревший файл эпизода");
+  }
+
+  async function kidsFor(encJson, codes) {
+    checkFormat(encJson);
+    const salt = fromB64(encJson.kdf.salt);
+    const out = [];
+    for (const n of new Set(codes.map(normalizeCode).filter(Boolean))) out.push((await deriveCodeKeys(n, salt, encJson.kdf.iter || ITER)).kid);
+    return out;
   }
 
   async function unlockWithCode(encJson, code) {
-    if (!encJson || !Array.isArray(encJson.keys)) throw new Error("Повреждённый файл эпизода");
+    checkFormat(encJson);
     const n = normalizeCode(code);
     if (!n) throw new Error("Пустой код");
-    const kid = await kidOf(n);
-    const candidates = encJson.keys.filter((k) => k.kid === kid);
-    for (const k of candidates) {
+    const { kid, wrapKey } = await deriveCodeKeys(n, fromB64(encJson.kdf.salt), encJson.kdf.iter || ITER);
+    for (const k of encJson.keys.filter((x) => x.kid === kid)) {
       try {
-        const wk = await deriveWrapKey(n, fromB64(k.salt), k.iter || ITER);
-        const raw = await subtle().decrypt({ name: "AES-GCM", iv: fromB64(k.iv) }, wk, fromB64(k.wrapped));
+        const raw = await subtle().decrypt({ name: "AES-GCM", iv: fromB64(k.iv) }, wrapKey, fromB64(k.wrapped));
         return toB64(raw);
       } catch (e) { /* следующая обёртка */ }
     }
@@ -119,7 +133,7 @@
     return JSON.parse(dec.decode(raw));
   }
 
-  const api = { normalizeCode, kidOf, generateKey, encrypt, unlockWithCode, decrypt, toB64, fromB64, ITER };
+  const api = { normalizeCode, kidsFor, generateKey, encrypt, unlockWithCode, decrypt, toB64, fromB64, ITER };
   if (isNode) module.exports = api;
   else root.Vault = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -10,7 +10,8 @@
 - Платный эпизод публикуется зашифрованным: `quests/<id>/quest.enc.json`
   (AES-GCM 256, случайный ключ контента **K** из `content/<id>/key.json`).
 - В том же файле лежат «обёртки» K — K, зашифрованный ключом, выведенным из кода доступа
-  (PBKDF2-SHA256, 200 000 итераций). Коды — в `content/codes.json`.
+  (PBKDF2-SHA256, 200 000 итераций, соль общая на файл; идентификатор обёртки `kid` выводится из
+  результата PBKDF2, а не из кода, поэтому не ускоряет перебор). Коды — в `content/codes.json`.
 - Браузер получает K одним из двух способов и сохраняет его в `localStorage["mayak:keys"]`:
   1. игрок вводит код → `Access.redeemCode(code)` → `Vault.unlockWithCode` → K;
   2. **после оплаты сервер отдаёт K** (или персональный код) → `Access.handleReturn()`.
@@ -66,12 +67,14 @@
 
 ### Контракт API
 
-`POST /api/checkout` — тело `{ item: "ep2" | "season-mayak", returnUrl, provider }` →
-`{ orderId, confirmationUrl }`.
+`POST /api/checkout` — тело `{ item: "ep2" | "season-mayak", returnUrl, returnHash, provider }` →
+`{ orderId, confirmationUrl }`. `returnUrl` — адрес страницы без query и хэша (`…/play.html`),
+`returnHash` — хэш, на который нужно вернуться (`#ep2`, может быть пустым). Сервер собирает адрес
+возврата как `${returnUrl}?order=${orderId}${returnHash}`.
 
 `GET /api/key?order=<orderId>` →
 - `{ status: "pending" }` — платёж ещё не подтверждён;
-- `{ status: "canceled" }`;
+- `{ status: "canceled" }` — отменён **или такого заказа нет** (ответ 200; на 404 клиент сразу прекращает опрос);
 - `{ status: "succeeded", keys: { ep2: "<K b64>", … } }` — или `codes: ["…"]`, если вы
   выдаёте персональные коды (их тогда нужно заранее вшить в `quest.enc.json`, см. ниже).
 
@@ -98,9 +101,12 @@ const ALLOWED_RETURN = /^https:\/\/kizzzil\.github\.io\/browse_game\//;
 
 // api/checkout.js
 export async function POST(req) {
-  const { item, returnUrl } = await req.json();
+  const { item, returnUrl, returnHash = "" } = await req.json();
   const product = CATALOG[item];
-  if (!product || !ALLOWED_RETURN.test(returnUrl)) return Response.json({ error: "bad request" }, { status: 400 });
+  // Адрес проверяем до добавления хэша; хэш — только «#идентификатор».
+  if (!product || !ALLOWED_RETURN.test(returnUrl) || /[?#]/.test(returnUrl) || !/^(#[\w-]{1,32})?$/.test(returnHash)) {
+    return Response.json({ error: "bad request" }, { status: 400 });
+  }
   const orderId = crypto.randomUUID();
   const r = await fetch("https://api.yookassa.ru/v3/payments", {
     method: "POST",
@@ -108,7 +114,7 @@ export async function POST(req) {
     body: JSON.stringify({
       amount: { value: product.price.toFixed(2), currency: "RUB" },
       capture: true,
-      confirmation: { type: "redirect", return_url: `${returnUrl}?order=${orderId}` },
+      confirmation: { type: "redirect", return_url: `${returnUrl}?order=${orderId}${returnHash}` },
       description: product.title,
       metadata: { orderId, item }
       // receipt: {...} — чек по 54-ФЗ, если вы его формируете через ЮKassa
@@ -138,7 +144,7 @@ export async function POST(req) {
 export async function GET(req) {
   const orderId = new URL(req.url).searchParams.get("order");
   const order = orderId && await db.orders.get(orderId);
-  if (!order) return Response.json({ status: "canceled" }, { status: 404 });
+  if (!order) return Response.json({ status: "canceled" }); // 200: клиент не будет повторять запрос
   if (order.status !== "paid") return Response.json({ status: order.status });
   const keys = Object.fromEntries(CATALOG[order.item].grants.map((id) => [id, KEYS[id]]));
   return Response.json({ status: "succeeded", keys });
@@ -196,6 +202,11 @@ Stripe — то же самое через Checkout Session (`success_url` с `?
    движок попросит ввести код заново);
 3. уберите `MAYAK-DEMO-2026` из `content/codes.json` и пересоберите;
 4. передайте новые K в секреты сервера оплаты.
+
+Уже сделано: `content/*/key.json` в `.gitignore`, ключ эп.2 (попадавший в историю git) сменён;
+сайт публикуется только из `dist/`: `.github/workflows/pages.yml` (`--publish-only`, без ключей в CI)
+кладёт его в ветку `gh-pages`.
+Остаётся: пункты 1, 3 и 4.
 
 `tools/build.js` умеет работать без исходника: если `content/<id>/quest.js` нет, а
 собранный `quests/<id>/quest.enc.json` есть, он публикуется как есть.

@@ -1,3 +1,6 @@
 dist/
 node_modules/
 .DS_Store
+# Ключи контента платных эпизодов — секрет, в репозиторий не попадают (см. docs/PAYMENTS.md §6).
+content/*/key.json
+__pycache__/

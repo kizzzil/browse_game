@@ -1,0 +1,52 @@
+# Публикация на GitHub Pages: в интернет уходит только dist/, а не корень репозитория.
+# Pages раздаёт ветку gh-pages (Settings → Pages → Deploy from branch → gh-pages / root).
+# Этот workflow собирает dist/ и кладёт его в gh-pages при каждом push в master.
+#
+# В CI нет content/*/key.json и кодов доступа (они не коммитятся), поэтому сборка идёт в режиме
+# --publish-only: шифрование пропускается, копируются уже собранные и закоммиченные quests/.
+# Перед коммитом платного эпизода соберите его локально: node tools/build.js
+name: Pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Сборка dist/ (без шифрования, из закоммиченных quests/)
+        run: node tools/build.js --publish-only
+      - name: Публикация dist/ в ветку gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages || true
+          git worktree add --detach /tmp/site
+          cd /tmp/site
+          if git rev-parse --verify -q origin/gh-pages >/dev/null; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+          fi
+          git rm -rfq . || true
+          cp -a "$GITHUB_WORKSPACE/dist/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Без изменений"
+          else
+            git commit -qm "Публикация ${GITHUB_SHA::7}"
+            git push origin gh-pages
+          fi

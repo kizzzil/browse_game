@@ -1,6 +1,9 @@
 /*
  * «Лента» — вымышленная соцсеть мира игры «Маяк».
- * Данные регистрируются из data/ep1.js … data/ep4.js, затем World.render() рисует профиль по #нику.
+ * Данные регистрируются из data/ep1.js … data/epN.js, затем World.render() рисует профиль по #нику.
+ * Файлы данных подключаются динамически: только data/epK.js для K ≤ mayak:worldEpisode
+ * (число файлов — атрибут data-episodes у тега <script src="core.js">). Так посты и ответы
+ * будущих эпизодов не лежат в загруженной странице раньше времени.
  *
  *   World.profile(nick, { name, avatar, color, bio, link:{label,url}, followers, following, episode })
  *   World.posts(nick, episode, [ { date, scene:{bg,emoji,text,receipt,scarf,image,imageAlt}, caption, comments:[[nick,text]], download:{url,label} } ])
@@ -93,7 +96,9 @@
   let current = null;
 
   function render() {
-    const nick = decodeURIComponent(location.hash.slice(1)).replace(/^@/, "").trim();
+    let raw = location.hash.slice(1);
+    try { raw = decodeURIComponent(raw); } catch (e) { /* битое %-кодирование → «Профиль не найден» */ }
+    const nick = raw.replace(/^@/, "").trim();
     const p = nick ? World.view(nick) : null;
     const dlg = $("post");
     if (dlg && dlg.open) dlg.close();
@@ -144,6 +149,34 @@
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   }
 
+  // ---------- данные эпизодов ----------
+  const self = document.currentScript;
+  const MAX_EP = Math.max(1, parseInt(self && self.dataset.episodes, 10) || 1);
+  const dataBase = self ? self.src.replace(/core\.js(\?.*)?$/, "data/") : "data/";
+  let loadedUpTo = 0;
+  let loading = Promise.resolve();
+  function loadScript(src) {
+    return new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = false;
+      s.onload = s.onerror = () => resolve();
+      document.head.appendChild(s);
+    });
+  }
+  // Подгружает data/ep(loadedUpTo+1..N).js по порядку, N = min(worldEpisode, MAX_EP).
+  function ensureData() {
+    loading = loading.then(async () => {
+      const want = Math.min(World.worldEpisode(), MAX_EP);
+      while (loadedUpTo < want) {
+        loadedUpTo++;
+        await loadScript(`${dataBase}ep${loadedUpTo}.js`);
+      }
+    });
+    return loading;
+  }
+  const dataReady = ensureData();
+
   function init() {
     const dlg = $("post");
     const photo = $("post-photo");
@@ -163,9 +196,9 @@
       if (v) location.hash = encodeURIComponent(v);
     });
     addEventListener("hashchange", render);
-    // «Лента» открыта в соседней вкладке, а игрок продвинулся в квесте — обновим видимость.
-    addEventListener("storage", (e) => { if (e.key === "mayak:worldEpisode") render(); });
-    render();
+    // «Лента» открыта в соседней вкладке, а игрок продвинулся в квесте — догрузим данные и обновим видимость.
+    addEventListener("storage", (e) => { if (e.key === "mayak:worldEpisode") ensureData().then(render); });
+    dataReady.then(render);
   }
 
   document.addEventListener("DOMContentLoaded", init);
