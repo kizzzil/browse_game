@@ -1,0 +1,13 @@
+{
+  "season": "mayak",
+  "quests": {
+    "ep1": {
+      "file": "quest.json",
+      "free": true
+    },
+    "ep2": {
+      "file": "quest.enc.json",
+      "free": false
+    }
+  }
+}
