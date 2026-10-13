@@ -253,11 +253,21 @@
         </form>
       </section>`;
     typeParagraphs($("#briefing"), f.briefing);
+    $("#accuse-form").addEventListener("change", (e) => {
+      const btn = e.currentTarget.querySelector(".btn");
+      delete btn.dataset.armed;
+      btn.textContent = "Выдвинуть обвинение";
+    });
     $("#accuse-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const choice = new FormData(e.target).get("suspect");
       if (!choice) return;
-      if (!confirm("Обвинение нельзя отозвать. Уверены?")) return;
+      const btn = e.target.querySelector(".btn");
+      if (!btn.dataset.armed) {
+        btn.dataset.armed = "1";
+        btn.textContent = "Обвинение нельзя отозвать. Подтвердить";
+        return;
+      }
       const ok = await Answers.check(C.salt, choice, f.answerHash);
       state.ending = { win: ok, accused: choice, at: Date.now() };
       save();
@@ -296,8 +306,20 @@
   $("#btn-evidence").addEventListener("click", () => togglePanel(!panel.classList.contains("open")));
   $("#btn-close-evidence").addEventListener("click", () => togglePanel(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") togglePanel(false); });
-  $("#btn-reset").addEventListener("click", () => {
-    if (confirm("Стереть прогресс и начать дело заново?")) { state = fresh(); save(); render(); }
+  // Сброс в два нажатия: системные confirm() работают не во всех окружениях.
+  const resetBtn = $("#btn-reset");
+  resetBtn.addEventListener("click", () => {
+    if (resetBtn.dataset.armed) {
+      clearTimeout(resetBtn.timer);
+      delete resetBtn.dataset.armed;
+      resetBtn.textContent = "⟲";
+      state = fresh(); save(); render();
+      return;
+    }
+    resetBtn.dataset.armed = "1";
+    resetBtn.textContent = "Стереть прогресс?";
+    toast("Нажмите ещё раз, чтобы начать дело заново");
+    resetBtn.timer = setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = "⟲"; }, 4000);
   });
 
   render();

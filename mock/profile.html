@@ -85,12 +85,13 @@
   <script src="profiles.js"></script>
   <script>
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    const user = new URLSearchParams(location.search).get("u") || "";
+    const user = decodeURIComponent(location.hash.slice(1)) || new URLSearchParams(location.search).get("u") || "";
+    addEventListener("hashchange", () => location.reload());
     const p = PROFILES[user];
     const root = document.getElementById("root");
 
     function userLink(u) {
-      return PROFILES[u] ? `<a class="u" href="?u=${encodeURIComponent(u)}">${esc(u)}</a>` : `<span class="u">${esc(u)}</span>`;
+      return PROFILES[u] ? `<a class="u" href="#${encodeURIComponent(u)}">${esc(u)}</a>` : `<span class="u">${esc(u)}</span>`;
     }
     function mini(u) {
       const q = PROFILES[u];
