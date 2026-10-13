@@ -1,0 +1,10 @@
+# robots.txt — ortov-yachts
+# Пути указаны от корня сайта брокера (папка ortov-yachts/).
+# Поисковикам сюда не нужно. Людям — тем более.
+
+User-agent: *
+Disallow: /admin/
+Disallow: /owners-club-26/
+Allow: /
+
+Sitemap: sitemap.xml

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Веб-Память — архив интернета</title>
+  <link rel="stylesheet" href="wp.css">
+</head>
+<body class="wp">
+<header class="wp-head"><div class="in">
+  <a class="wp-logo" href="index.html"><span class="stack"><i></i><i></i><i></i></span><span><b>ВЕБ-ПАМЯТЬ</b><small>архив интернета · снимки страниц по датам</small></span></a>
+  <nav><a href="index.html">Поиск</a><a href="#how">Как это работает</a></nav>
+</div></header>
+<main class="wp-main">
+  <h1>Интернет забывает. Мы — нет.</h1>
+  <p class="lead">Введите адрес сайта или страницы — и посмотрите, какой она была месяц, год или пять лет назад. Даже если сегодня её уже удалили.</p>
+  <form class="search" id="f" role="search">
+    <input id="q" name="q" type="text" placeholder="например: tetrad.lenta/имя-блога" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Адрес сайта">
+    <button type="submit">Найти снимки</button>
+  </form>
+  <div id="out" aria-live="polite"></div>
+
+  <div class="facts">
+    <div><b>1 204 377 112</b>сохранённых страниц</div>
+    <div><b>с 2009 года</b>снимаем «Ленту», блоги и сайты организаций</div>
+    <div><b>0 правок</b>копии хранятся такими, какими были на дату снимка</div>
+  </div>
+
+  <h2 id="how">Как это работает</h2>
+  <p>Наш робот время от времени обходит сайты и сохраняет копию каждой страницы, до которой смог дойти. Поэтому у одной и той же страницы бывает много снимков, а у некоторых снимков сохранились не все страницы.</p>
+  <p>Если автор изменил или удалил страницу, свежие снимки покажут новую версию или ошибку. Старые снимки останутся прежними. Ищите в календаре даты, отмеченные цветом.</p>
+  <p>Адрес можно вводить без «https://» и «www». Регистр не важен.</p>
+</main>
+<footer class="wp-foot">«Веб-Память» — некоммерческий архив. Мы не изменяем содержимое сохранённых страниц.<br><span class="fic">Вымышленный сайт для игры «Маяк». Все совпадения случайны.</span></footer>
+<script>
+(function () {
+  var SITES = [
+    { addr: "tetrad.lenta/lotsman", title: "«Записки лоцмана» — блог на платформе «Тетрадь»", href: "lotsman/index.html", n: 5,
+      range: "03.03.2025 — 02.12.2026", keys: ["lotsman", "лоцман", "lotsmana", "записки", "zapiski"] },
+    { addr: "mayak-fund.lenta", title: "Благотворительный фонд «Маяк»", href: "mayak-fund/index.html", n: 2,
+      range: "20.12.2025 — 05.10.2026", keys: ["mayak", "маяк", "fund", "фонд"] }
+  ];
+  var KNOWN_EMPTY = ["tetrad.lenta", "lenta", "лента", "тетрадь"];
+  var f = document.getElementById("f"), q = document.getElementById("q"), out = document.getElementById("out");
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function clean(s) {
+    return String(s || "").trim().toLowerCase().replace(/ё/g, "е")
+      .replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").replace(/[?#].*$/, "").replace(/\/+$/, "");
+  }
+  function search(raw) {
+    var s = clean(raw);
+    if (!s) { out.innerHTML = ""; return; }
+    var hits = SITES.filter(function (x) {
+      return s.indexOf(x.addr) === 0 || x.keys.some(function (k) { return s.indexOf(k) !== -1; });
+    });
+    if (hits.length) {
+      out.innerHTML = hits.map(function (x) {
+        return '<div class="result"><a class="addr" href="' + x.href + '">' + esc(x.addr) + '</a>' +
+          '<small>' + esc(x.title) + '</small><small>Снимков: ' + x.n + ' · ' + esc(x.range) + '</small></div>';
+      }).join("");
+    } else if (KNOWN_EMPTY.indexOf(s) !== -1) {
+      out.innerHTML = '<div class="result none">По адресу <b>' + esc(s) + '</b> снимков много, но это главная страница платформы. Уточните адрес: добавьте после косой черты имя блога.</div>';
+    } else {
+      out.innerHTML = '<div class="result none">Снимков для <b>' + esc(s) + '</b> не найдено. Проверьте адрес: архив ищет по адресу сайта, а не по словам на странице.</div>';
+    }
+  }
+  f.addEventListener("submit", function (e) {
+    e.preventDefault();
+    search(q.value);
+    try { history.replaceState(null, "", "#q=" + encodeURIComponent(q.value.trim())); } catch (err) {}
+  });
+  var m = location.hash.match(/^#q=(.*)$/);
+  if (m) { try { q.value = decodeURIComponent(m[1]); } catch (err) { q.value = m[1]; } search(q.value); }
+})();
+</script>
+</body>
+</html>

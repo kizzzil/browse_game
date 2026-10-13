@@ -3,37 +3,139 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Дело №0913</title>
-  <meta name="description" content="Браузерный триллер-квест: улики ищутся в настоящем интернете.">
-  <link rel="stylesheet" href="css/style.css">
+  <title>Маяк — детективный сезон в браузере</title>
+  <meta name="description" content="«Маяк» — сезон из четырёх связанных детективных квестов. Улики ищутся в интернете персонажей: соцсети, сайты, реестры, фото и звук. Первый эпизод бесплатно.">
+  <meta name="theme-color" content="#0b0c0e">
+  <meta property="og:title" content="Маяк — детективный сезон в браузере">
+  <meta property="og:description" content="Четыре дела. Одна схема. Первый эпизод бесплатно.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0c0e'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23c8102e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/platform.css">
+  <link rel="stylesheet" href="css/access.css">
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
-  <div class="scanlines" aria-hidden="true"></div>
 
-  <header class="topbar">
-    <div class="brand"><span class="rec"></span> <span id="case-title">ДЕЛО</span></div>
-    <div class="agent" id="agent-label"></div>
-    <nav class="top-actions">
-      <button class="ghost" id="btn-evidence">Улики <span class="count" id="evidence-count">0</span></button>
-      <button class="ghost" id="btn-reset" title="Начать заново">⟲</button>
-    </nav>
+  <header class="nav">
+    <div class="nav-in">
+      <a class="logo" href="#top"><span class="lamp" aria-hidden="true"></span>МАЯК</a>
+      <nav class="nav-links" aria-label="Разделы">
+        <a href="#episodes">Эпизоды</a>
+        <a href="#how">Как играть</a>
+        <a href="#code">Есть код?</a>
+      </nav>
+      <div class="nav-progress" id="nav-progress" aria-live="polite"></div>
+    </div>
   </header>
 
-  <main id="app" class="app"></main>
+  <main id="top">
+    <!-- Герой сезона -->
+    <section class="hero">
+      <div class="beam" aria-hidden="true"></div>
+      <div class="hero-in">
+        <div class="kicker">Сезон 1 · детективный квест в браузере</div>
+        <h1 class="hero-title">Маяк</h1>
+        <p class="tagline" id="tagline"></p>
+        <p class="blurb" id="blurb"></p>
+        <div class="cta" id="hero-cta"></div>
+        <ul class="facts">
+          <li><b>4</b> связанных дела</li>
+          <li><b>~3 ч</b> расследования</li>
+          <li><b>0</b> регистраций</li>
+          <li><b>1-й</b> эпизод бесплатно</li>
+        </ul>
+      </div>
+    </section>
 
-  <aside id="evidence-panel" class="panel" aria-hidden="true">
-    <div class="panel-head">
-      <h2>Доска улик</h2>
-      <button class="ghost" id="btn-close-evidence">✕</button>
+    <!-- Прогресс сезона -->
+    <section class="block progress-block" id="progress" aria-labelledby="progress-h">
+      <div class="block-head">
+        <h2 id="progress-h">Ваш сезон</h2>
+        <p class="muted" id="progress-text"></p>
+      </div>
+      <ol class="season-track" id="season-track"></ol>
+    </section>
+
+    <!-- Эпизоды -->
+    <section class="block" id="episodes" aria-labelledby="episodes-h">
+      <div class="block-head">
+        <h2 id="episodes-h">Эпизоды</h2>
+        <p class="muted">Каждое дело закрывается само по себе, но вместе они складываются в одну историю. Играть лучше по порядку.</p>
+      </div>
+      <div class="episodes" id="episode-list"></div>
+    </section>
+
+    <!-- Весь сезон -->
+    <section class="block bundle" id="bundle" aria-labelledby="bundle-h"></section>
+
+    <!-- Код доступа -->
+    <section class="block code-block" id="code" aria-labelledby="code-h">
+      <div class="code-card">
+        <div>
+          <h2 id="code-h">Есть код доступа?</h2>
+          <p class="muted">Коды выдают организаторы игр, они приходят в рассылке или после оплаты. Один код может открыть один эпизод или весь сезон.</p>
+        </div>
+        <form id="code-form" class="code-form" autocomplete="off">
+          <label class="sr" for="code-input">Код доступа</label>
+          <input id="code-input" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" spellcheck="false" required>
+          <button class="btn" type="submit">Активировать</button>
+          <div class="code-msg" id="code-msg" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Как играть -->
+    <section class="block" id="how" aria-labelledby="how-h">
+      <div class="block-head">
+        <h2 id="how-h">Как играть</h2>
+        <p class="muted">Игра — это папка с делом. Улики — в «интернете» персонажей.</p>
+      </div>
+      <ol class="steps">
+        <li><span class="step-n">01</span><h3>Откройте дело</h3><p>Брифинг, рапорты и документы следствия. Всё, что знает полиция, — перед вами.</p></li>
+        <li><span class="step-n">02</span><h3>Ищите в сети</h3><p>Профили в соцсети «Лента», сайты компаний, реестры, архивы, фото и аудио. Ссылки открываются в соседней вкладке.</p></li>
+        <li><span class="step-n">03</span><h3>Возвращайтесь с ответом</h3><p>Время, название, слово, координаты. Регистр и знаки препинания не важны. Застряли — берите подсказку.</p></li>
+        <li><span class="step-n">04</span><h3>Назовите виновного</h3><p>В финале каждого дела — обвинение. Улики копятся на доске и пригодятся в следующих эпизодах.</p></li>
+      </ol>
+      <div class="rules">
+        <h3>Правила безопасности</h3>
+        <ul>
+          <li>Все персонажи, компании и сайты вымышлены. Совпадения случайны.</li>
+          <li>Для решения не нужно никому писать, звонить, регистрироваться, что-либо взламывать или платить на сторонних сайтах.</li>
+          <li>Не ищите «персонажей» среди реальных людей и не публикуйте чужие данные.</li>
+          <li>Иногда пригодятся общедоступные онлайн-инструменты: просмотрщик метаданных фото, декодеры, карты. Загружайте в них только файлы из игры.</li>
+          <li>Прогресс хранится только в вашем браузере. Мы не собираем персональные данные.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Вопросы -->
+    <section class="block faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">Вопросы</h2>
+      <details><summary>Нужно ли что-то устанавливать?</summary><p>Нет. Нужен только современный браузер. На телефоне тоже играется, но с компьютера удобнее держать несколько вкладок.</p></details>
+      <details><summary>Как купить эпизод?</summary><p>Онлайн-оплата скоро появится. Пока платные эпизоды открываются кодом доступа. После оплаты эпизод откроется в этом браузере автоматически.</p></details>
+      <details><summary>Прогресс пропал после очистки браузера</summary><p>Прогресс и открытые эпизоды хранятся локально. Если вы очистили данные сайта, введите код доступа ещё раз, эпизоды откроются снова.</p></details>
+      <details><summary>Можно играть компанией?</summary><p>Да. Один ведёт «папку с делом», остальные ищут улики в соседних вкладках. Так даже интереснее.</p></details>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-in">
+      <div>
+        <div class="logo small"><span class="lamp" aria-hidden="true"></span>МАЯК</div>
+        <p class="muted">Детективный сезон в браузере. Все персонажи, организации и события вымышлены, все совпадения случайны.</p>
+      </div>
+      <div class="foot-actions">
+        <button class="ghost" id="reset-all" type="button">Сбросить весь прогресс</button>
+        <p class="muted small">© 2026 «Маяк»</p>
+      </div>
     </div>
-    <div id="evidence-list" class="evidence-list"></div>
-  </aside>
+  </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/answers.js"></script>
-  <script src="js/case.js"></script>
-  <script src="js/game.js"></script>
+  <script src="js/core/storage.js"></script>
+  <script src="js/core/vault.js"></script>
+  <script src="js/platform/catalog.js"></script>
+  <script src="js/platform/access.js"></script>
+  <script src="js/platform/home.js"></script>
 </body>
 </html>

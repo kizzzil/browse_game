@@ -1,0 +1,45 @@
+/* Модалка покупки / ввода кода (js/platform/access.js). Подключается и на витрине, и в движке. */
+.acc-modal {
+  border: 1px solid var(--line, #2a2d33); padding: 0; background: #101114; color: var(--text, #d6d3cc);
+  width: min(480px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+  box-shadow: 0 30px 80px rgba(0,0,0,.7);
+}
+.acc-modal::backdrop { background: rgba(5,6,8,.82); backdrop-filter: blur(3px); }
+.acc-box { position: relative; padding: 28px 24px 22px; font-family: var(--mono, ui-monospace, monospace); font-size: 14px; line-height: 1.55; }
+.acc-x { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted, #7d7a73); font-size: 28px; line-height: 1; cursor: pointer; padding: 4px 8px; }
+.acc-x:hover { color: #fff; }
+.acc-kicker { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--red, #c8102e); margin-bottom: 6px; }
+.acc-box h2 { font-family: var(--serif, Georgia, serif); font-size: 24px; line-height: 1.2; margin: 0 40px 6px 0; color: #f1ede4; }
+.acc-price { font-size: 22px; font-weight: 700; color: var(--amber, #e0a526); margin-bottom: 14px; }
+.acc-list { list-style: none; padding: 0; margin: 0 0 6px; }
+.acc-list li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line, #2a2d33); }
+.acc-list span { color: var(--muted, #7d7a73); white-space: nowrap; text-decoration: line-through; }
+.acc-save { color: var(--green, #4fbf7a); font-size: 13px; margin: 6px 0 14px; }
+.acc-btn {
+  font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  background: var(--red, #c8102e); color: #fff; border: 0; padding: 12px 18px; cursor: pointer;
+}
+.acc-btn:hover:not(:disabled) { background: #e01535; }
+.acc-btn:disabled { opacity: .45; cursor: not-allowed; }
+.acc-btn.ghost { background: transparent; border: 1px solid var(--amber, #e0a526); color: var(--amber, #e0a526); }
+.acc-btn.ghost:hover:not(:disabled) { background: rgba(224,165,38,.12); }
+.acc-pay .acc-btn { width: 100%; }
+.acc-soon { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--amber, #e0a526); background: rgba(224,165,38,.07); font-size: 13px; }
+.acc-note { margin: 10px 0 0; font-size: 12px; color: var(--muted, #7d7a73); }
+.acc-link { display: block; margin: 14px 0 0; background: none; border: 0; padding: 0; color: var(--amber, #e0a526); font: inherit; font-size: 13px; text-align: left; cursor: pointer; text-decoration: underline dotted; }
+.acc-code { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line, #2a2d33); }
+.acc-code label { display: block; margin-bottom: 8px; color: #f1ede4; }
+.acc-row { display: flex; gap: 8px; }
+.acc-row input {
+  flex: 1; min-width: 0; font: inherit; letter-spacing: .08em; text-transform: uppercase;
+  background: #07080a; color: #f1ede4; border: 1px solid var(--line, #2a2d33); padding: 11px 12px;
+}
+.acc-row input:focus { outline: none; border-color: var(--amber, #e0a526); }
+.acc-msg { min-height: 20px; margin-top: 10px; font-size: 13px; }
+.acc-msg.bad { color: #ff4d64; }
+.acc-msg.good { color: var(--green, #4fbf7a); }
+.acc-msg a { color: var(--amber, #e0a526); font-weight: 700; }
+@media (max-width: 420px) {
+  .acc-box { padding: 24px 16px 18px; }
+  .acc-row { flex-direction: column; }
+}

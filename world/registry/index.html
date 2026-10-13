@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>РеестрИнфо — сведения о юридических лицах</title>
+  <link rel="stylesheet" href="registry.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="#">
+        <span class="seal" aria-hidden="true">РИ</span>
+        <span><b>РеестрИнфо</b><small>Сведения о юридических лицах · открытые данные</small></span>
+      </a>
+      <nav><a href="#">Поиск</a><a href="#help">Справка</a></nav>
+    </div>
+  </header>
+
+  <section class="search">
+    <div class="wrap">
+      <form id="f" autocomplete="off">
+        <label for="q">ИНН, ОГРН, название, ФИО руководителя или адрес</label>
+        <div class="row">
+          <input id="q" name="q" type="search" placeholder="Например: 0078224417 или «Маяк»">
+          <button type="submit">Найти</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <main class="wrap" id="out" aria-live="polite"></main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <p>РеестрИнфо · данные обновлены 09.10.2026. Сведения предоставляются «как есть».</p>
+      <p>ИНН и ОГРН на сайте условные: код региона «00» не существует, контрольные разряды не соблюдены.</p>
+      <p class="fic">Вымышленный сайт для игры «Маяк». Все совпадения случайны.</p>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="registry.js"></script>
+</body>
+</html>
